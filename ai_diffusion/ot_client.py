@@ -18,6 +18,11 @@ class OperationType(Enum):
     LAYER_MOVE = "layer_move"
     LAYER_RENAME = "layer_rename"
 
+class MessageType(Enum):
+    UPDATE = "update"
+    ACK = "ack"
+    ERROR = "error"
+
 @dataclass
 class PixelData:
     """Represents pixel-level changes in a document"""
@@ -219,6 +224,7 @@ class OTClient(Client):
                     
                     # Send update to server with version information
                     await self._ws.send(json.dumps({
+                        "type": MessageType.UPDATE.value,
                         "operation_id": operation_id,
                         "operation": operation.to_dict(),
                         "client_version": self._local_version,
@@ -229,33 +235,38 @@ class OTClient(Client):
                 message = await self._ws.recv()
                 data = json.loads(message)
                 
-                if data.get("type") == "update":
-                    # Handle server update with OT
+                message_type = data.get("type", "")
+
+                if message_type == MessageType.UPDATE.value:
                     await self._handle_server_update(data)
                     
                     yield ClientMessage(
                         ClientEvent.output,
                         job_id=data.get("operation_id", ""),
-                        result=data.get("changes")
+                        result=data.get("operation")
                     )
                     
-                elif data.get("type") == "ack":
-                    # Server acknowledged our operation
+                elif message_type == MessageType.ACK.value:
                     op_id = data.get("operation_id")
-                    # Remove from pending operations
                     self._pending_operations = [op for op in self._pending_operations 
                                              if op.operation_id != op_id]
                     self._local_version += 1
                     
-                    # Update Lamport timestamp from server acknowledgment
                     server_timestamp = data.get("timestamp", 0)
                     self.lamport_timestamp = max(self.lamport_timestamp, server_timestamp) + 1
                 
-                elif data.get("type") == "error":
+                elif message_type == MessageType.ERROR.value:
                     yield ClientMessage(
                         ClientEvent.error,
                         job_id=data.get("operation_id", ""),
                         error=data.get("error")
+                    )
+                else:
+                    # Handle unknown message type
+                    print(f"Unknown message type: {message_type}")
+                    yield ClientMessage(
+                        ClientEvent.error,
+                        error=f"Unknown message type: {message_type}"
                     )
 
             except websockets.exceptions.ConnectionClosed:
