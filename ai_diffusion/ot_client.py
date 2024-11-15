@@ -1,79 +1,67 @@
 from __future__ import annotations
 import asyncio
-import json
 import websockets
-from typing import Any, Generator, Dict, List, Literal, Union
-from dataclasses import dataclass
+from typing import Any, AsyncGenerator, Dict, List, Literal, Union, Optional
+from pydantic import BaseModel, Field
 from uuid import uuid4
 from enum import Enum
+import logging as logger
 
 from .client import Client, ClientMessage, ClientEvent, ClientFeatures, DeviceInfo
 from .api import WorkflowInput
 from .settings import PerformanceSettings
 
-class OperationType(Enum):
+class OperationType(str, Enum):
     PIXEL_UPDATE = "pixel_update"
     LAYER_CREATE = "layer_create"
     LAYER_DELETE = "layer_delete"
     LAYER_MOVE = "layer_move"
     LAYER_RENAME = "layer_rename"
 
-class MessageType(Enum):
+class MessageType(str, Enum):
     UPDATE = "update"
     ACK = "ack"
     ERROR = "error"
 
-@dataclass
-class PixelData:
+class PixelData(BaseModel):
     """Represents pixel-level changes in a document"""
-    color: List[int]  # RGBA values [0-255, 0-255, 0-255, 0-255]
-    bounds: Dict[str, int]  # {"x": x, "y": y, "width": w, "height": h}
-    layer_id: str     # Unique layer identifier
+    color: List[int] = Field(description="RGBA values [0-255, 0-255, 0-255, 0-255]")
+    bounds: Dict[str, int] = Field(description="{'x': x, 'y': y, 'width': w, 'height': h}")
+    layer_id: str = Field(description="Unique layer identifier")
 
-@dataclass
-class LayerData:
+class LayerData(BaseModel):
     """Represents layer-level changes in a document"""
     layer_id: str
     layer_name: str
-    layer_type: str  # From LayerType enum
-    parent_id: str | None = None
-    above_id: str | None = None
+    layer_type: str = Field(description="From LayerType enum")
+    parent_id: Optional[str] = None
+    above_id: Optional[str] = None
 
-@dataclass
-class Operation:
+class Operation(BaseModel):
     """Represents a document operation with Lamport timestamp tracking"""
-    client_id: str          # Unique client identifier
-    sequence_num: int       # Local sequence number
-    timestamp: int          # Lamport timestamp
-    operation_type: OperationType  # Type of operation
-    position: Dict[str, int]  # x, y coordinates for cursor/selection position
-    data: Union[PixelData, LayerData]  # Operation-specific data
-    base_version: int      # The document version this operation is based on
+    client_id: str = Field(description="Unique client identifier")
+    sequence_num: int = Field(description="Local sequence number")
+    timestamp: int = Field(description="Lamport timestamp")
+    operation_type: OperationType = Field(description="Type of operation")
+    position: Dict[str, int] = Field(description="x, y coordinates for cursor/selection position")
+    data: Union[PixelData, LayerData] = Field(description="Operation-specific data")
+    base_version: int = Field(description="The document version this operation is based on")
+    version: Optional[int] = Field(None, description="The server version after applying this operation")
 
     @property
     def operation_id(self) -> str:
         """Unique identifier combining client ID, sequence number, and timestamp"""
         return f"{self.client_id}:{self.sequence_num}:{self.timestamp}"
-    
-    def to_dict(self) -> dict:
-        """Convert operation to dictionary for transmission"""
-        return {
-            "client_id": self.client_id,
-            "sequence_num": self.sequence_num,
-            "timestamp": self.timestamp,
-            "operation_type": self.operation_type.value,
-            "position": self.position,
-            "data": {
-                "color": self.data.color if isinstance(self.data, PixelData) else None,
-                "bounds": self.data.bounds if isinstance(self.data, PixelData) else None,
-                "layer_id": self.data.layer_id,
-                "layer_name": self.data.layer_name if isinstance(self.data, LayerData) else None,
-                "layer_type": self.data.layer_type if isinstance(self.data, LayerData) else None,
-                "parent_id": self.data.parent_id if isinstance(self.data, LayerData) else None,
-                "above_id": self.data.above_id if isinstance(self.data, LayerData) else None
-            },
-            "base_version": self.base_version
-        }
+
+class WebSocketMessage(BaseModel):
+    """Represents a WebSocket message for OT communication"""
+    type: MessageType
+    operation_id: Optional[str] = None
+    operation: Optional[Operation] = Field(None, description="Operation data for updates")
+    client_version: Optional[int] = None
+    timestamp: Optional[int] = None
+    error: Optional[str] = None
+    version: Optional[int] = Field(None, description="server version")
 
 class OTClient(Client):
     """WebSocket client for handling Krita document synchronization with OT support"""
@@ -92,16 +80,16 @@ class OTClient(Client):
         self.url = url
         self.device_info = DeviceInfo("local", "WebSocket Client", 0)
         self._ws = None
-        self._current_operation = None
-        self._queue: asyncio.Queue = asyncio.Queue()
+        self._current_operation: Optional[tuple[str, Operation]] = None
+        self._queue: asyncio.Queue[tuple[str, Operation]] = asyncio.Queue()
         self.models = None  # Not implementing model management
  
         # OT-specific state
-        self.client_id = f"{client_id}:{uuid4()}"  # Unique client identifier
-        self.sequence_num = 0          # Local operation counter
-        self.lamport_timestamp = 0     # Logical timestamp
-        self._local_version = 0        # Local document version
-        self._server_version = 0       # Last known server version
+        self.client_id: str = f"{client_id}:{uuid4()}"  # Unique client identifier
+        self.sequence_num: int = 0          # Local operation counter
+        self.lamport_timestamp: int = 0     # Logical timestamp
+        self._local_version: int = 0        # Local document version
+        self._server_version: int = 0       # Last known server version
         self._pending_operations: list[Operation] = []  # Operations waiting for acknowledgment
 
     async def _connect(self) -> bool:
@@ -178,13 +166,13 @@ class OTClient(Client):
         
         return operation
 
-    async def _handle_server_update(self, server_op: dict):
+    async def _handle_server_update(self, server_op: Operation):
         """
         Handles updates from server, transforming pending operations as needed
         Used when: Receiving server updates that might conflict with pending operations
         """
-        server_version = server_op.get("version")
-        server_timestamp = server_op.get("timestamp", 0)
+        server_version = server_op.version  # Use the resulting server version
+        server_timestamp = server_op.timestamp
         
         # Update Lamport timestamp
         self.lamport_timestamp = max(self.lamport_timestamp, server_timestamp) + 1
@@ -198,13 +186,13 @@ class OTClient(Client):
         for pending_op in self._pending_operations:
             if pending_op.base_version < server_version:
                 # Transform operation against server operation
-                pending_op = await self._transform_operation(pending_op, Operation(**server_op))
+                pending_op = await self._transform_operation(pending_op, server_op)
                 pending_op.base_version = server_version
             transformed_pending.append(pending_op)
         
         self._pending_operations = transformed_pending
 
-    async def listen(self) -> Generator[ClientMessage, Any, None]:
+    async def listen(self) -> AsyncGenerator[ClientMessage, Any]:
         """
         Listen for messages and handle OT synchronization
         Used when: Continuous connection monitoring and update receiving
@@ -223,50 +211,52 @@ class OTClient(Client):
                     self._current_operation = (operation_id, operation)
                     
                     # Send update to server with version information
-                    await self._ws.send(json.dumps({
-                        "type": MessageType.UPDATE.value,
-                        "operation_id": operation_id,
-                        "operation": operation.to_dict(),
-                        "client_version": self._local_version,
-                        "timestamp": self.lamport_timestamp
-                    }))
+                    message = WebSocketMessage(
+                        type=MessageType.UPDATE,
+                        operation_id=operation_id,
+                        operation=operation,
+                        client_version=self._local_version,
+                        timestamp=self.lamport_timestamp
+                    )
+                    logger.debug(f"Sending message: {message}")
+                    await self._ws.send(message.model_dump_json())
 
                 # Receive server messages
                 message = await self._ws.recv()
-                data = json.loads(message)
-                
-                message_type = data.get("type", "")
+                data = WebSocketMessage.model_validate_json(message)
+                logger.debug(f"Received message: {data}")
+                message_type = data.type
 
-                if message_type == MessageType.UPDATE.value:
-                    await self._handle_server_update(data)
+                if message_type == MessageType.UPDATE:
+                    await self._handle_server_update(data.operation)
                     
                     yield ClientMessage(
                         ClientEvent.output,
-                        job_id=data.get("operation_id", ""),
-                        result=data.get("operation")
+                        job_id=data.operation_id,
+                        result=data.operation
                     )
                     
-                elif message_type == MessageType.ACK.value:
-                    op_id = data.get("operation_id")
+                elif message_type == MessageType.ACK:
+                    op_id = data.operation_id
                     self._pending_operations = [op for op in self._pending_operations 
                                              if op.operation_id != op_id]
                     self._local_version += 1
                     
-                    server_timestamp = data.get("timestamp", 0)
+                    server_timestamp = data.timestamp
                     self.lamport_timestamp = max(self.lamport_timestamp, server_timestamp) + 1
                 
-                elif message_type == MessageType.ERROR.value:
+                elif message_type == MessageType.ERROR:
                     yield ClientMessage(
                         ClientEvent.error,
-                        job_id=data.get("operation_id", ""),
-                        error=data.get("error")
+                        job_id=data.operation_id,
+                        error=data.error
                     )
                 else:
                     # Handle unknown message type
-                    print(f"Unknown message type: {message_type}")
+                    logger.error(f"Unknown message type: {message_type}, message: {message}")
                     yield ClientMessage(
                         ClientEvent.error,
-                        error=f"Unknown message type: {message_type}"
+                        error=f"Unknown message type: {message_type}, message: {message}"
                     )
 
             except websockets.exceptions.ConnectionClosed:
@@ -296,8 +286,8 @@ class OTClient(Client):
         Clears pending updates
         Used when: Resetting or clearing pending operations
         """
-        self._queue = asyncio.Queue()
-        self._pending_operations = []
+        self._queue: asyncio.Queue[tuple[str, Operation]] = asyncio.Queue()
+        self._pending_operations: list[Operation] = []
 
     @property
     def features(self) -> ClientFeatures:
