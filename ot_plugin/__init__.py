@@ -4,7 +4,7 @@ __version__ = "1.27.1"
 
 import importlib.util
 
-if not importlib.util.find_spec(".websockets.src", "ai_diffusion"):
+if not importlib.util.find_spec(".websockets.src", "ot_plugin"):
     raise ImportError(
         "Could not find websockets module. This indicates that it was not installed with the"
         " plugin. Please make sure to download a plugin release package (NOT just the source!). You"

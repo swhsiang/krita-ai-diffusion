@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Service
 ServiceTypes=Krita/PythonPlugin
-X-KDE-Library=ai_diffusion
+X-KDE-Library=ot_plugin
 X-Python-2-Compatible=false
 X-Krita-Manual=manual.html
 Name=Operational Transformation Plugin

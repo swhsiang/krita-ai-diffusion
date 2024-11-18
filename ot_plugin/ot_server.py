@@ -2,7 +2,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from typing import Dict
 import asyncio
 import logging as logger
-from ai_diffusion.ot_client import (
+from ot_plugin.ot_client import (
     OperationType, MessageType, PixelData, LayerData, Operation, WebSocketMessage
 )
 import uvicorn

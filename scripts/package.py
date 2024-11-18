@@ -11,13 +11,13 @@ root = Path(__file__).parent.parent
 package_dir = root / "scripts" / ".package"
 
 sys.path.append(str(root))
-import ai_diffusion
+import ot_plugin
 
 sys.path.append(str(Path(__file__).parent))
 import translation
 
-version = ai_diffusion.__version__
-package_name = f"krita_ai_diffusion-{version}"
+version = ot_plugin.__version__
+package_name = f"krita_ot_plugin-{version}"
 
 
 def convert_markdown_to_html(markdown_file: Path, html_file: Path):
@@ -34,10 +34,10 @@ def build_package():
 
     rmtree(package_dir, ignore_errors=True)
     package_dir.mkdir()
-    copy(root / "ai_diffusion.desktop", package_dir)
+    copy(root / "ot_plugin.desktop", package_dir)
 
-    plugin_src = root / "ai_diffusion"
-    plugin_dst = package_dir / "ai_diffusion"
+    plugin_src = root / "ot_plugin"
+    plugin_dst = package_dir / "ot_plugin"
 
     def ignore(path, names):
         return ignore_patterns(".*", "*.pyc", "__pycache__")(path, names)

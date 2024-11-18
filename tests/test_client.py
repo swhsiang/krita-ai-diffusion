@@ -2,18 +2,18 @@ import asyncio
 from pathlib import Path
 import pytest
 
-from ai_diffusion import eventloop, resources
-from ai_diffusion.api import WorkflowInput, WorkflowKind, LoraInput
-from ai_diffusion.api import CheckpointInput, ImageInput, SamplingInput, ConditioningInput
-from ai_diffusion.resources import ControlMode
-from ai_diffusion.network import NetworkError
-from ai_diffusion.image import Extent
-from ai_diffusion.client import ClientEvent, resolve_arch
-from ai_diffusion.comfy_client import ComfyClient, parse_url, websocket_url
-from ai_diffusion.style import Arch, Style
-from ai_diffusion.server import Server, ServerState, ServerBackend
-from ai_diffusion.files import FileLibrary, File, FileFormat
-from ai_diffusion.util import ensure
+from ot_plugin import eventloop, resources
+from ot_plugin.api import WorkflowInput, WorkflowKind, LoraInput
+from ot_plugin.api import CheckpointInput, ImageInput, SamplingInput, ConditioningInput
+from ot_plugin.resources import ControlMode
+from ot_plugin.network import NetworkError
+from ot_plugin.image import Extent
+from ot_plugin.client import ClientEvent, resolve_arch
+from ot_plugin.comfy_client import ComfyClient, parse_url, websocket_url
+from ot_plugin.style import Arch, Style
+from ot_plugin.server import Server, ServerState, ServerBackend
+from ot_plugin.files import FileLibrary, File, FileFormat
+from ot_plugin.util import ensure
 from .config import server_dir, default_checkpoint, test_dir
 
 

@@ -4,19 +4,19 @@ from copy import copy
 from pathlib import Path
 from PyQt5.QtCore import Qt
 
-from ai_diffusion.api import CustomWorkflowInput, ImageInput, WorkflowInput
-from ai_diffusion.client import Client, ClientModels, CheckpointInfo, TextOutput
-from ai_diffusion.connection import Connection, ConnectionState
-from ai_diffusion.comfy_workflow import ComfyNode, ComfyWorkflow, Output
-from ai_diffusion.custom_workflow import CustomWorkflow, WorkflowSource, WorkflowCollection
-from ai_diffusion.custom_workflow import SortedWorkflows, CustomWorkspace
-from ai_diffusion.custom_workflow import CustomParam, ParamKind, workflow_parameters
-from ai_diffusion.image import Image, Extent
-from ai_diffusion.jobs import JobQueue, Job, JobKind, JobParams
-from ai_diffusion.style import Style
-from ai_diffusion.resources import Arch
-from ai_diffusion.image import Bounds
-from ai_diffusion import workflow
+from ot_plugin.api import CustomWorkflowInput, ImageInput, WorkflowInput
+from ot_plugin.client import Client, ClientModels, CheckpointInfo, TextOutput
+from ot_plugin.connection import Connection, ConnectionState
+from ot_plugin.comfy_workflow import ComfyNode, ComfyWorkflow, Output
+from ot_plugin.custom_workflow import CustomWorkflow, WorkflowSource, WorkflowCollection
+from ot_plugin.custom_workflow import SortedWorkflows, CustomWorkspace
+from ot_plugin.custom_workflow import CustomParam, ParamKind, workflow_parameters
+from ot_plugin.image import Image, Extent
+from ot_plugin.jobs import JobQueue, Job, JobKind, JobParams
+from ot_plugin.style import Style
+from ot_plugin.resources import Arch
+from ot_plugin.image import Bounds
+from ot_plugin import workflow
 
 from .config import test_dir
 

@@ -1,6 +1,6 @@
-from ai_diffusion.text import merge_prompt, extract_loras, edit_attention, select_on_cursor_pos
-from ai_diffusion.api import LoraInput
-from ai_diffusion.files import File, FileCollection
+from ot_plugin.text import merge_prompt, extract_loras, edit_attention, select_on_cursor_pos
+from ot_plugin.api import LoraInput
+from ot_plugin.files import File, FileCollection
 
 
 def test_merge_prompt():

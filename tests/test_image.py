@@ -3,7 +3,7 @@ import numpy as np
 from PyQt5.QtGui import QImage, qRgba
 from PyQt5.QtCore import Qt, QByteArray
 from PIL import Image as PILImage
-from ai_diffusion.image import Mask, Bounds, Extent, Image, ImageCollection
+from ot_plugin.image import Mask, Bounds, Extent, Image, ImageCollection
 from .config import image_dir, result_dir, reference_dir
 
 

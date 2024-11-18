@@ -3,8 +3,8 @@ from PIL import Image
 import os
 import pytest
 
-from ai_diffusion.image import ImageCollection, Image as ImageWrapper
-from ai_diffusion.cloud_client import CloudClient
+from ot_plugin.image import ImageCollection, Image as ImageWrapper
+from ot_plugin.cloud_client import CloudClient
 from .config import root_dir, test_dir
 
 if (root_dir / "service" / "pod" / "lib").exists():

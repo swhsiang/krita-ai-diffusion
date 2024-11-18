@@ -1,13 +1,13 @@
 import pytest
 from pathlib import Path
 
-from ai_diffusion import resolution, workflow
-from ai_diffusion.api import InpaintMode
-from ai_diffusion.image import Bounds, Extent, Image, Mask, Point
-from ai_diffusion.resolution import ScaledExtent, ScaleMode, CheckpointResolution, TileLayout
-from ai_diffusion.resources import Arch
-from ai_diffusion.style import Style
-from ai_diffusion.settings import PerformanceSettings
+from ot_plugin import resolution, workflow
+from ot_plugin.api import InpaintMode
+from ot_plugin.image import Bounds, Extent, Image, Mask, Point
+from ot_plugin.resolution import ScaledExtent, ScaleMode, CheckpointResolution, TileLayout
+from ot_plugin.resources import Arch
+from ot_plugin.style import Style
+from ot_plugin.settings import PerformanceSettings
 
 from .config import data_dir
 

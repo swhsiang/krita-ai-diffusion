@@ -2,9 +2,9 @@ import json
 from tempfile import TemporaryDirectory
 from pathlib import Path
 
-from ai_diffusion.settings import PerformancePreset, Settings, Setting, ServerMode
-from ai_diffusion.style import Style, Styles, StyleSettings, SamplerPreset, SamplerPresets
-from ai_diffusion import style
+from ot_plugin.settings import PerformancePreset, Settings, Setting, ServerMode
+from ot_plugin.style import Style, Styles, StyleSettings, SamplerPreset, SamplerPresets
+from ot_plugin import style
 
 
 def test_get_set():

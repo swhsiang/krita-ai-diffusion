@@ -18,6 +18,7 @@ tests/server
 tests/results
 tests/benchmark
 krita_ai_diffusion*.zip
+ot_plugin*.zip
 TODO.md
 .idea
 venv

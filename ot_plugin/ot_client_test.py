@@ -2,7 +2,7 @@ import asyncio
 import websockets
 import json
 from uuid import uuid4
-from ai_diffusion.ot_client import (
+from ot_plugin.ot_client import (
     Operation, OperationType, PixelData, WebSocketMessage, MessageType
 )
 
