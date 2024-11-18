@@ -6,6 +6,7 @@ black
 pyright
 requests
 pydantic
+uvicorn
 
 # Testing
 aiohttp
