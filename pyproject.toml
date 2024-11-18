@@ -12,9 +12,9 @@ exclude = [
     "**/.server",
     "tests/server",
     "tests/test_image_transfer.py",
-    "ai_diffusion/websockets",
+    "ot_plugin/websockets",
 ]
-ignore = ["ai_diffusion/websockets", "krita.pyi"]
+ignore = ["ot_plugin/websockets", "krita.pyi"]
 extraPaths = ["scripts/typeshed"]
 reportMissingModuleSource = false
 
