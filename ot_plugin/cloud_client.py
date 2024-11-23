@@ -376,7 +376,7 @@ models.upscalers = [
     "OmniSR_X4_DIV2K.safetensors",
 ]
 # fmt: off
-from ai_diffusion.resources import resource_id, ResourceKind, ControlMode, UpscalerName
+from ot_plugin.resources import resource_id, ResourceKind, ControlMode, UpscalerName
 models.resources = {
     resource_id(ResourceKind.controlnet, Arch.sd15, ControlMode.inpaint): "control_v11p_sd15_inpaint_fp16.safetensors",
     resource_id(ResourceKind.controlnet, Arch.sdxl, ControlMode.universal): "xinsir-controlnet-union-sdxl-1.0-promax.safetensors",

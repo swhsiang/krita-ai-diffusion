@@ -212,7 +212,7 @@ class WelcomeWidget(QWidget):
 class ImageDiffusionWidget(DockWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle(_("AI Image Generation"))
+        self.setWindowTitle(_("Operation Transformation Image Generation"))
         self._welcome = WelcomeWidget(root.server)
         self._generation = GenerationWidget()
         self._upscaling = UpscaleWidget()
