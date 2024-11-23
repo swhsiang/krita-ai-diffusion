@@ -8,22 +8,22 @@ from pathlib import Path
 from typing import Any
 from PyQt5.QtCore import Qt
 
-from ai_diffusion import workflow
-from ai_diffusion.api import LoraInput, WorkflowKind, WorkflowInput, ControlInput, RegionInput
-from ai_diffusion.api import InpaintMode, FillMode, ConditioningInput, CustomWorkflowInput
-from ai_diffusion.api import SamplingInput, ImageInput
-from ai_diffusion.client import ClientModels, CheckpointInfo
-from ai_diffusion.comfy_client import ComfyClient
-from ai_diffusion.cloud_client import CloudClient
-from ai_diffusion.comfy_workflow import ComfyWorkflow, ComfyNode, Output
-from ai_diffusion.files import FileLibrary, FileCollection, File, FileSource
-from ai_diffusion.resources import ControlMode
-from ai_diffusion.settings import PerformanceSettings
-from ai_diffusion.image import Mask, Bounds, Extent, Image, ImageCollection
-from ai_diffusion.client import Client, ClientEvent
-from ai_diffusion.style import Arch, Style
-from ai_diffusion.pose import Pose
-from ai_diffusion.workflow import detect_inpaint
+from ot_plugin import workflow
+from ot_plugin.api import LoraInput, WorkflowKind, WorkflowInput, ControlInput, RegionInput
+from ot_plugin.api import InpaintMode, FillMode, ConditioningInput, CustomWorkflowInput
+from ot_plugin.api import SamplingInput, ImageInput
+from ot_plugin.client import ClientModels, CheckpointInfo
+from ot_plugin.comfy_client import ComfyClient
+from ot_plugin.cloud_client import CloudClient
+from ot_plugin.comfy_workflow import ComfyWorkflow, ComfyNode, Output
+from ot_plugin.files import FileLibrary, FileCollection, File, FileSource
+from ot_plugin.resources import ControlMode
+from ot_plugin.settings import PerformanceSettings
+from ot_plugin.image import Mask, Bounds, Extent, Image, ImageCollection
+from ot_plugin.client import Client, ClientEvent
+from ot_plugin.style import Arch, Style
+from ot_plugin.pose import Pose
+from ot_plugin.workflow import detect_inpaint
 from . import config
 from .config import root_dir, test_dir, image_dir, result_dir, reference_dir, default_checkpoint
 

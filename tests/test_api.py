@@ -1,6 +1,6 @@
 from PyQt5.QtCore import Qt
 
-from ai_diffusion.api import (
+from ot_plugin.api import (
     WorkflowInput,
     WorkflowKind,
     ControlInput,
@@ -8,9 +8,9 @@ from ai_diffusion.api import (
     ImageInput,
     ConditioningInput,
 )
-from ai_diffusion.image import Extent, Image, ImageFileFormat
-from ai_diffusion.resources import ControlMode
-from ai_diffusion.util import ensure
+from ot_plugin.image import Extent, Image, ImageFileFormat
+from ot_plugin.resources import ControlMode
+from ot_plugin.util import ensure
 
 
 def test_defaults():

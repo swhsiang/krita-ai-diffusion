@@ -5,13 +5,13 @@ import os
 import sys
 import asyncio
 
-from ai_diffusion.api import WorkflowInput, WorkflowKind, ControlInput, ImageInput, CheckpointInput
-from ai_diffusion.api import SamplingInput, ConditioningInput, ExtentInput, RegionInput
-from ai_diffusion.client import Client, ClientEvent
-from ai_diffusion.cloud_client import CloudClient, enumerate_features, apply_limits
-from ai_diffusion.image import Extent, Image, Bounds
-from ai_diffusion.resources import ControlMode, Arch
-from ai_diffusion.util import ensure
+from ot_plugin.api import WorkflowInput, WorkflowKind, ControlInput, ImageInput, CheckpointInput
+from ot_plugin.api import SamplingInput, ConditioningInput, ExtentInput, RegionInput
+from ot_plugin.client import Client, ClientEvent
+from ot_plugin.cloud_client import CloudClient, enumerate_features, apply_limits
+from ot_plugin.image import Extent, Image, Bounds
+from ot_plugin.resources import ControlMode, Arch
+from ot_plugin.util import ensure
 from .conftest import has_local_cloud
 from .config import root_dir, test_dir, result_dir
 

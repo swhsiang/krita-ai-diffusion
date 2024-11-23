@@ -3,9 +3,9 @@ import sys
 import pytest
 from tempfile import TemporaryDirectory
 from pathlib import Path
-from ai_diffusion import util
-from ai_diffusion.util import ZipFile
-from ai_diffusion.util import batched, ensure, sanitize_prompt, find_unused_path
+from ot_plugin import util
+from ot_plugin.util import ZipFile
+from ot_plugin.util import batched, ensure, sanitize_prompt, find_unused_path
 
 
 def test_batched():

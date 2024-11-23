@@ -1,6 +1,6 @@
 import pytest
-from ai_diffusion.image import Extent
-from ai_diffusion.pose import (
+from ot_plugin.image import Extent
+from ot_plugin.pose import (
     Pose,
     BoneIndex,
     JointIndex,

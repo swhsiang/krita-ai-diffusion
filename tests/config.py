@@ -1,5 +1,5 @@
 from pathlib import Path
-from ai_diffusion.resources import Arch, default_checkpoints
+from ot_plugin.resources import Arch, default_checkpoints
 
 
 test_dir = Path(__file__).parent

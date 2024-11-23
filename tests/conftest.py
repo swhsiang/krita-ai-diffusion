@@ -9,8 +9,8 @@ from PyQt5.QtCore import QCoreApplication
 root_dir = Path(__file__).parent.parent
 sys.path.append(str(root_dir))
 
-from ai_diffusion import eventloop, network, util
-from ai_diffusion.settings import settings
+from ot_plugin import eventloop, network, util
+from ot_plugin.settings import settings
 
 from .config import result_dir
 

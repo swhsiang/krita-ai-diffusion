@@ -2,7 +2,7 @@ from enum import Enum
 import pytest
 from PyQt5.QtCore import QObject, pyqtSignal
 
-from ai_diffusion.properties import Property, ObservableProperties, bind, serialize, deserialize
+from ot_plugin.properties import Property, ObservableProperties, bind, serialize, deserialize
 
 
 class Piong(Enum):
