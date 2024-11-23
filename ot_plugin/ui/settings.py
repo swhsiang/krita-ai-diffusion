@@ -206,6 +206,64 @@ class CloudWidget(QWidget):
         settings.access_token = ""
         settings.save()
 
+class OTConnectionSettings(SettingsTab):
+    def __init__(self):
+        super().__init__(_("OT Connection Settings"))
+
+        self._ot_url = QLineEdit(self)
+        self._ot_url.textChanged.connect(self.write)
+        self._connect_button = QPushButton(_("Connect"), self)
+        self._connect_button.clicked.connect(self._connect)
+
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel(_("OT WebSocket URL:"), self))
+        layout.addWidget(self._ot_url)
+        layout.addWidget(self._connect_button)
+
+        self._connection_status = QLabel(self)
+        self._connection_status.setWordWrap(True)
+        self._connection_status.setTextFormat(Qt.TextFormat.RichText)
+        layout.addWidget(self._connection_status)
+
+        self.setLayout(layout)
+
+        root.connection.state_changed.connect(self.update_connection_status)
+        self.update_connection_status()
+
+    @property
+    def ot_url(self):
+        return self._ot_url.text()
+
+    @ot_url.setter
+    def ot_url(self, url: str):
+        self._ot_url.setText(url)
+
+    def _read(self):
+        self.ot_url = settings.ot_url
+
+    def _write(self):
+        settings.ot_url = self.ot_url
+        settings.save()
+
+    def _connect(self):
+        root.ot_connection.connect(self.ot_url)
+
+    def update_connection_status(self):
+        ot_connection = root.ot_connection
+        if ot_connection.state == ConnectionState.connected:
+            self._connection_status.setText(_("Connected"))
+            self._connection_status.setStyleSheet(f"color: {green}; font-weight:bold")
+        elif ot_connection.state == ConnectionState.connecting:
+            self._connection_status.setText(_("Connecting"))
+            self._connection_status.setStyleSheet(f"color: {yellow}; font-weight:bold")
+        elif ot_connection.state == ConnectionState.disconnected:
+            self._connection_status.setText(_("Disconnected"))
+            self._connection_status.setStyleSheet(f"color: {grey}; font-style:italic")
+        elif ot_connection.state == ConnectionState.error:
+            msg = ot_connection.error.removeprefix("Error: ") if ot_connection.error else "Unknown error"
+            self._connection_status.setText("<b>" + _("Error") + f"</b>: {msg}")
+            self._connection_status.setStyleSheet(f"color: {red};")
+
 
 class ConnectionSettings(SettingsTab):
     def __init__(self, server: Server):
@@ -781,6 +839,7 @@ class SettingsDialog(QDialog):
         self.setLayout(layout)
 
         self.connection = ConnectionSettings(server)
+        self.ot_connection = OTConnectionSettings()
         self.styles = StylePresets(server)
         self.diffusion = DiffusionSettings()
         self.interface = InterfaceSettings()
@@ -802,6 +861,7 @@ class SettingsDialog(QDialog):
         create_list_item(_("Interface"), self.interface)
         create_list_item(_("Performance"), self.performance)
         create_list_item(_("Plugin"), self.about)
+        create_list_item(_("OT Connection"), self.ot_connection)
 
         self._list.setCurrentRow(0)
         self._list.currentRowChanged.connect(self._change_page)
@@ -841,6 +901,7 @@ class SettingsDialog(QDialog):
 
     def read(self):
         self.connection.read()
+        self.ot_connection.read()
         self.styles.read()
         self.diffusion.read()
         self.interface.read()
@@ -870,6 +931,9 @@ class SettingsDialog(QDialog):
         if root.connection.state == ConnectionState.connected:
             self.interface.update_translation(root.connection.client)
             self.performance.update_device_info()
+
+    def _update_ot_connection(self):
+        self.ot_connection.update_connection_status()
 
     def _open_settings_folder(self):
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(util.user_data_dir)))
