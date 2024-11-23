@@ -120,6 +120,13 @@ class Settings(QObject):
         _("URL used to connect to a running ComfyUI server. Default is 127.0.0.1:8188 (local)."),
     )
 
+    ot_url: str
+    _ot_url = Setting(
+        _("OT Server URL"),
+        "127.0.0.1:8080",
+        _("URL used to connect to a running OT server. Default is 127.0.0.1:8080 (local)."),
+    )
+
     server_backend: ServerBackend
     _server_backend = Setting(_("Server Backend"), ServerBackend.default())
 

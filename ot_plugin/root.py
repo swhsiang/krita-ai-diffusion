@@ -3,6 +3,7 @@ from typing import Callable, NamedTuple
 from PyQt5.QtCore import QObject, pyqtSignal
 
 from .connection import Connection, ConnectionState
+from .ot_connection import OTConnection
 from .client import ClientMessage
 from .custom_workflow import WorkflowCollection
 from .server import Server, ServerState
@@ -26,6 +27,7 @@ class Root(QObject):
 
     _server: Server
     _connection: Connection
+    _ot_connection: OTConnection
     _models: list[PerDocument]
     _recent: RecentlyUsedSync
 
@@ -37,6 +39,7 @@ class Root(QObject):
     def init(self):
         self._server = Server(settings.server_path)
         self._connection = Connection()
+        self._ot_connection = OTConnection()
         self._files = FileLibrary.load()
         self._workflows = WorkflowCollection(self._connection)
         self._models = []
@@ -76,6 +79,10 @@ class Root(QObject):
     @property
     def connection(self) -> Connection:
         return self._connection
+    
+    @property
+    def ot_connection(self) -> OTConnection:
+        return self._ot_connection
 
     @property
     def server(self):
@@ -100,6 +107,9 @@ class Root(QObject):
         return self._null_model
 
     async def autostart(self, signal_server_change: Callable):
+        ot_connection = self._ot_connection
+        ot_connection.connect()
+
         connection = self._connection
         try:
             if (
