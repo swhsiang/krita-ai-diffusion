@@ -1,3 +1,9 @@
 [submodule "ot_plugin/websockets"]
 	path = ot_plugin/websockets
 	url = https://github.com/python-websockets/websockets.git
+
+[submodule "ot_plugin/pydantic"]
+	path = ot_plugin/pydantic
+	url = https://github.com/pydantic/pydantic.git
+
+
