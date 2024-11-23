@@ -3,7 +3,7 @@ import asyncio
 from .websockets.src.websockets import client as websockets_client
 from .websockets.src.websockets import exceptions as websockets_exceptions
 from typing import Any, AsyncGenerator, Dict, List, Literal, Union, Optional
-from .pydantic.pydantic import BaseModel, Field
+from dataclasses import dataclass, field
 from uuid import uuid4
 from enum import Enum
 import logging as logger
@@ -24,45 +24,48 @@ class MessageType(str, Enum):
     ACK = "ack"
     ERROR = "error"
 
-class PixelData(BaseModel):
+@dataclass
+class PixelData:
     """Represents pixel-level changes in a document"""
-    color: List[int] = Field(description="RGBA values [0-255, 0-255, 0-255, 0-255]")
-    bounds: Dict[str, int] = Field(description="{'x': x, 'y': y, 'width': w, 'height': h}")
-    layer_id: str = Field(description="Unique layer identifier")
+    color: List[int] = field(default_factory=list)
+    bounds: Dict[str, int] = field(default_factory=dict)
+    layer_id: str = ""
 
-class LayerData(BaseModel):
+@dataclass
+class LayerData:
     """Represents layer-level changes in a document"""
     layer_id: str
     layer_name: str
-    layer_type: str = Field(description="From LayerType enum")
+    layer_type: str
     parent_id: Optional[str] = None
     above_id: Optional[str] = None
 
-class Operation(BaseModel):
+class Operation:
     """Represents a document operation with Lamport timestamp tracking"""
-    client_id: str = Field(description="Unique client identifier")
-    sequence_num: int = Field(description="Local sequence number")
-    timestamp: int = Field(description="Lamport timestamp")
-    operation_type: OperationType = Field(description="Type of operation")
-    position: Dict[str, int] = Field(description="x, y coordinates for cursor/selection position")
-    data: Union[PixelData, LayerData] = Field(description="Operation-specific data")
-    base_version: int = Field(description="The document version this operation is based on")
-    version: Optional[int] = Field(None, description="The server version after applying this operation")
+    client_id: str
+    sequence_num: int
+    timestamp: int
+    operation_type: OperationType
+    position: Dict[str, int]
+    data: Union[PixelData, LayerData]
+    base_version: int
+    version: Optional[int] = None
 
     @property
     def operation_id(self) -> str:
         """Unique identifier combining client ID, sequence number, and timestamp"""
         return f"{self.client_id}:{self.sequence_num}:{self.timestamp}"
 
-class WebSocketMessage(BaseModel):
+@dataclass
+class WebSocketMessage:
     """Represents a WebSocket message for OT communication"""
     type: MessageType
     operation_id: Optional[str] = None
-    operation: Optional[Operation] = Field(None, description="Operation data for updates")
+    operation: Optional[Operation] = None
     client_version: Optional[int] = None
     timestamp: Optional[int] = None
     error: Optional[str] = None
-    version: Optional[int] = Field(None, description="server version")
+    version: Optional[int] = None
 
 class OTClient(Client):
     """WebSocket client for handling Krita document synchronization with OT support"""
