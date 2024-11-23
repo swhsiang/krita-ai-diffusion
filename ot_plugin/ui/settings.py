@@ -901,6 +901,7 @@ class SettingsDialog(QDialog):
 
     def read(self):
         self.connection.read()
+        self.ot_connection.read()
         self.styles.read()
         self.diffusion.read()
         self.interface.read()
@@ -930,6 +931,9 @@ class SettingsDialog(QDialog):
         if root.connection.state == ConnectionState.connected:
             self.interface.update_translation(root.connection.client)
             self.performance.update_device_info()
+    
+    def _update_ot_connection(self):
+        self.ot_connection.update_connection_status()
 
     def _open_settings_folder(self):
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(util.user_data_dir)))
