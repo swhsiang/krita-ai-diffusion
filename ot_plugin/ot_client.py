@@ -3,7 +3,7 @@ import asyncio
 from .websockets.src.websockets import client as websockets_client
 from .websockets.src.websockets import exceptions as websockets_exceptions
 from typing import Any, AsyncGenerator, Dict, List, Literal, Union, Optional
-from .pydantic import BaseModel, Field
+from .pydantic.pydantic import BaseModel, Field
 from uuid import uuid4
 from enum import Enum
 import logging as logger
