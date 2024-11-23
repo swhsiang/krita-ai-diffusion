@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
-import websockets
+from .websockets.src.websockets import client as websockets_client
+from .websockets.src.websockets import exceptions as websockets_exceptions
 from typing import Any, AsyncGenerator, Dict, List, Literal, Union, Optional
 from pydantic import BaseModel, Field
 from uuid import uuid4
@@ -98,7 +99,7 @@ class OTClient(Client):
         Used when: Initial connection and reconnection attempts
         """
         try:
-            self._ws = await websockets.connect(self.url)
+            self._ws = await websockets_client.connect(self.url)
             return True
         except Exception as e:
             print(f"Connection failed: {str(e)}")
@@ -259,7 +260,7 @@ class OTClient(Client):
                         error=f"Unknown message type: {message_type}, message: {message}"
                     )
 
-            except websockets.exceptions.ConnectionClosed:
+            except websockets_exceptions.ConnectionClosed:
                 yield ClientMessage(ClientEvent.disconnected)
                 break
             except Exception as e:
