@@ -5,5 +5,3 @@
 [submodule "ot_plugin/pydantic"]
 	path = ot_plugin/pydantic
 	url = https://github.com/pydantic/pydantic.git
-
-
