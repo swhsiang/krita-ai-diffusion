@@ -931,7 +931,7 @@ class SettingsDialog(QDialog):
         if root.connection.state == ConnectionState.connected:
             self.interface.update_translation(root.connection.client)
             self.performance.update_device_info()
-    
+
     def _update_ot_connection(self):
         self.ot_connection.update_connection_status()
 
