@@ -3,7 +3,7 @@ import regex as re
 import json
 from pathlib import Path
 
-source_dir = Path(__file__).parent.parent / "ai_diffusion"
+source_dir = Path(__file__).parent.parent / "ot_plugin"
 excluded_dirs = [".pytest_cache", "__pycache__", "icons", "websockets"]
 expression = re.compile(r'_\(\s*"(.+?)"[\,|\s*\)]')
 

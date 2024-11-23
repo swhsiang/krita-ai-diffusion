@@ -10,7 +10,7 @@ from pathlib import Path
 from urllib.parse import unquote as url_unquote
 
 sys.path.append(str(Path(__file__).parent.parent))
-from ai_diffusion import resources
+from ot_plugin import resources
 
 dir = Path(__file__).parent / "downloads"
 

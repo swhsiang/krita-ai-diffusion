@@ -22,9 +22,9 @@ from tqdm import tqdm
 from argparse import ArgumentParser
 
 sys.path.append(str(Path(__file__).parent.parent))
-from ai_diffusion import resources
-from ai_diffusion.resources import Arch, ResourceKind, ModelResource
-from ai_diffusion.resources import required_models, default_checkpoints, optional_models
+from ot_plugin import resources
+from ot_plugin.resources import Arch, ResourceKind, ModelResource
+from ot_plugin.resources import required_models, default_checkpoints, optional_models
 
 try:
     import truststore
