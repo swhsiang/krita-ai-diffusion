@@ -227,7 +227,7 @@ class OTConnectionSettings(SettingsTab):
 
         self.setLayout(layout)
 
-        root.connection.state_changed.connect(self.update_connection_status)
+        root.ot_connection.state_changed.connect(self.update_connection_status)
         self.update_connection_status()
 
     @property
