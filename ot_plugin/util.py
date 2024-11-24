@@ -84,14 +84,22 @@ client_logger = create_logger("krita.ai_diffusion.client", log_dir / "client.log
 server_logger = create_logger("krita.ai_diffusion.server", log_dir / "server.log")
 ot_client_logger = create_logger("krita.ai_diffusion.ot_client", log_dir / "ot_client.log")
 
-def log_error(error: Exception):
+def _log_error(logger: logging.Logger, error: Exception):
     message = str(error)
     if isinstance(error, AssertionError):
         message = f"Error: Internal assertion failed [{error}]"
     elif not message.startswith("Error:"):
         message = f"Error: {message}"
-    client_logger.exception(message)
+    logger.exception(message)
     return message
+
+
+def ot_log_error(error: Exception):
+    return _log_error(ot_client_logger, error)
+
+
+def log_error(error: Exception):
+    return _log_error(client_logger, error)
 
 
 def ensure(value: Optional[T], msg="") -> T:
