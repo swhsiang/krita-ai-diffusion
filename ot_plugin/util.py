@@ -82,7 +82,7 @@ def create_logger(name: str, path: Path):
 log_dir = _get_log_dir()
 client_logger = create_logger("krita.ai_diffusion.client", log_dir / "client.log")
 server_logger = create_logger("krita.ai_diffusion.server", log_dir / "server.log")
-
+ot_client_logger = create_logger("krita.ai_diffusion.ot_client", log_dir / "ot_client.log")
 
 def log_error(error: Exception):
     message = str(error)

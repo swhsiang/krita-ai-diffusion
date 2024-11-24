@@ -57,7 +57,8 @@ class OTConnection(QObject, ObservableProperties):
             self.state = ConnectionState.error
     
     def connect(self):
-        eventloop.run(self._connect(settings.server_url))
+        util.ot_client_logger.info(f"Connecting to OT server at {settings.ot_url}")
+        eventloop.run(self._connect(settings.ot_url))
 
     async def disconnect(self):
         if self._task is not None:
