@@ -53,11 +53,12 @@ class OTConnection(QObject, ObservableProperties):
             self.state = ConnectionState.connected
             self.models_changed.emit()
         except Exception as e:
-            self.error = util.log_error(e)
+            self.error = util.ot_log_error(e)
             self.state = ConnectionState.error
     
     def connect(self):
-        eventloop.run(self._connect(settings.server_url))
+        util.ot_client_logger.info(f"Connecting to OT server at {settings.ot_url}")
+        eventloop.run(self._connect(settings.ot_url))
 
     async def disconnect(self):
         if self._task is not None:
@@ -82,7 +83,7 @@ class OTConnection(QObject, ObservableProperties):
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    util.client_logger.exception(e)
+                    util.ot_client_logger.exception(e)
                     self.error = _("Error handling server message: ") + str(e)
         except asyncio.CancelledError:
             pass  # shutdown

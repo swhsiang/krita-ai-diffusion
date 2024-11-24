@@ -211,24 +211,50 @@ class OTConnectionSettings(SettingsTab):
     def __init__(self):
         super().__init__(_("OT Connection Settings"))
 
-        QtCore.qDebug("OTConnectionSettings init")
+        util.ot_client_logger.info("OTConnectionSettings init")
 
+        # button
         self._ot_url = QLineEdit(self)
         self._ot_url.textChanged.connect(self.write)
         self._connect_button = QPushButton(_("Connect"), self)
         self._connect_button.clicked.connect(self._connect)
 
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel(_("OT WebSocket URL:"), self))
-        layout.addWidget(self._ot_url)
-        layout.addWidget(self._connect_button)
+        # widget
+        self._connection_widget = QWidget(self)
+
+        connection_layout = QVBoxLayout()
+        self._connection_widget.setLayout(connection_layout)
+
+        add_header(connection_layout, Settings._ot_url)
+        ot_url_label = QLabel(_("OT WebSocket URL:"), self)
+        ot_url_label.setContentsMargins(0, 20, 0, 0)
+        server_layout = QHBoxLayout()
+        server_layout.addWidget(ot_url_label)
+        server_layout.addWidget(self._ot_url)
+        server_layout.addWidget(self._connect_button)
+        connection_layout.addLayout(server_layout)
 
         self._connection_status = QLabel(self)
         self._connection_status.setWordWrap(True)
         self._connection_status.setTextFormat(Qt.TextFormat.RichText)
-        layout.addWidget(self._connection_status)
+        self._connection_status.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextBrowserInteraction
+        )
+        self._connection_status.setOpenExternalLinks(True)
 
-        self.setLayout(layout)
+        anchor = _("View log files")
+        open_log_button = QLabel(f"<a href='file://{util.log_dir}'>{anchor}</a>", self)
+        open_log_button.setToolTip(str(util.log_dir))
+        open_log_button.linkActivated.connect(self._open_logs)
+
+        status_layout = QHBoxLayout()
+        status_layout.addWidget(self._connection_status)
+        status_layout.addWidget(open_log_button, alignment=Qt.AlignmentFlag.AlignRight)
+
+        connection_layout.addLayout(status_layout)
+        connection_layout.addStretch()
+
+        self._layout.addWidget(self._connection_widget)
 
         root.ot_connection.state_changed.connect(self.update_connection_status)
         self.update_connection_status()
@@ -242,14 +268,14 @@ class OTConnectionSettings(SettingsTab):
         self._ot_url.setText(url)
 
     def _read(self):
-        self.ot_url = settings.ot_url
+        self._ot_url.setText(settings.ot_url)
 
     def _write(self):
-        settings.ot_url = self.ot_url
-        settings.save()
+        util.ot_client_logger.info(f"update OT URL from {settings.ot_url} to: {self._ot_url.text()}")
+        settings.ot_url = self._ot_url.text()
 
     def _connect(self):
-        root.ot_connection.connect(self.ot_url)
+        root.ot_connection.connect()
 
     def update_connection_status(self):
         ot_connection = root.ot_connection
@@ -267,6 +293,8 @@ class OTConnectionSettings(SettingsTab):
             self._connection_status.setText("<b>" + _("Error") + f"</b>: {msg}")
             self._connection_status.setStyleSheet(f"color: {red};")
 
+    def _open_logs(self):
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(util.log_dir)))
 
 class ConnectionSettings(SettingsTab):
     def __init__(self, server: Server):
