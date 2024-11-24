@@ -22,6 +22,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QMetaObject, QSize, QUrl, pyqtSignal
 from PyQt5.QtGui import QDesktopServices, QGuiApplication, QCursor, QFontMetrics
+from PyQt import QtCore
 
 from ..client import Client, User
 from ..cloud_client import CloudClient
@@ -209,6 +210,8 @@ class CloudWidget(QWidget):
 class OTConnectionSettings(SettingsTab):
     def __init__(self):
         super().__init__(_("OT Connection Settings"))
+
+        QtCore.qDebug("OTConnectionSettings init")
 
         self._ot_url = QLineEdit(self)
         self._ot_url.textChanged.connect(self.write)
