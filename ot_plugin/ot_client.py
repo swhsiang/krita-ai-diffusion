@@ -105,7 +105,7 @@ class OTClient(Client):
             self._ws = await websockets_client.connect(self.url)
             return True
         except Exception as e:
-            print(f"Connection failed: {str(e)}")
+            ot_client_logger.error(f"Connection failed: {e}")
             return False
 
     async def enqueue(self, work: WorkflowInput, front: bool = False) -> str:
@@ -203,6 +203,7 @@ class OTClient(Client):
         """
         ot_client_logger.info(f"start listening")
         yield ClientMessage(ClientEvent.connected)
+        ot_client_logger.info(f"after emitting connected")
 
         while True:
             try:
