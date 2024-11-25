@@ -6,8 +6,8 @@ from typing import Any, AsyncGenerator, Dict, List, Literal, Union, Optional
 from dataclasses import dataclass, field
 from uuid import uuid4
 from enum import Enum
-import logging as logger
 
+from .util import ot_client_logger
 from .client import Client, ClientMessage, ClientEvent, ClientFeatures, DeviceInfo
 from .api import WorkflowInput
 from .settings import PerformanceSettings
@@ -201,6 +201,7 @@ class OTClient(Client):
         Listen for messages and handle OT synchronization
         Used when: Continuous connection monitoring and update receiving
         """
+        ot_client_logger.info(f"start listening")
         yield ClientMessage(ClientEvent.connected)
 
         while True:
@@ -222,13 +223,13 @@ class OTClient(Client):
                         client_version=self._local_version,
                         timestamp=self.lamport_timestamp
                     )
-                    logger.debug(f"Sending message: {message}")
+                    ot_client_logger.debug(f"Sending message: {message}")
                     await self._ws.send(message.model_dump_json())
 
                 # Receive server messages
                 message = await self._ws.recv()
                 data = WebSocketMessage.model_validate_json(message)
-                logger.debug(f"Received message: {data}")
+                ot_client_logger.debug(f"Received message: {data}")
                 message_type = data.type
 
                 if message_type == MessageType.UPDATE:
