@@ -20,7 +20,6 @@ class ConnectionState(Enum):
 class OTConnection(QObject, ObservableProperties):
     state = Property(ConnectionState.disconnected)
     error = Property("")
-    missing_resource: MissingResource | None = None
 
     state_changed = pyqtSignal(ConnectionState)
     error_changed = pyqtSignal(str)
@@ -41,18 +40,21 @@ class OTConnection(QObject, ObservableProperties):
             self._task.cancel()
 
     async def _connect(self, url: str):
+        util.ot_client_logger.info(f"connection state: {self.state}")
         if self.state is ConnectionState.connected:
             await self.disconnect()
         self.error = None
-        self.missing_resource = None
         self.state = ConnectionState.connecting
         try:
+            util.ot_client_logger.info(f"before call to OTClient.connect")
             self._client = await OTClient.connect(url)
+            util.ot_client_logger.info(f"after call to OTClient.connect")
             if self._task is None:
                 self._task = eventloop._loop.create_task(self._handle_messages())
             self.state = ConnectionState.connected
-            self.models_changed.emit()
         except Exception as e:
+            util.ot_client_logger.exception(e)
+            # FIXME: not seeing this in the log
             self.error = util.ot_log_error(e)
             self.state = ConnectionState.error
     
@@ -68,7 +70,6 @@ class OTConnection(QObject, ObservableProperties):
 
         self._client = None
         self.error = None
-        self.missing_resource = None
         self.state = ConnectionState.disconnected
         self._update_state()
 

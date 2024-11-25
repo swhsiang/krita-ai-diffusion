@@ -22,7 +22,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QMetaObject, QSize, QUrl, pyqtSignal
 from PyQt5.QtGui import QDesktopServices, QGuiApplication, QCursor, QFontMetrics
-from PyQt import QtCore
+from PyQt5 import QtCore
 
 from ..client import Client, User
 from ..cloud_client import CloudClient
@@ -213,11 +213,6 @@ class OTConnectionSettings(SettingsTab):
 
         util.ot_client_logger.info("OTConnectionSettings init")
 
-        # button
-        self._ot_url = QLineEdit(self)
-        self._ot_url.textChanged.connect(self.write)
-        self._connect_button = QPushButton(_("Connect"), self)
-        self._connect_button.clicked.connect(self._connect)
 
         # widget
         self._connection_widget = QWidget(self)
@@ -226,15 +221,21 @@ class OTConnectionSettings(SettingsTab):
         self._connection_widget.setLayout(connection_layout)
 
         add_header(connection_layout, Settings._ot_url)
-        ot_url_label = QLabel(_("OT WebSocket URL:"), self)
-        ot_url_label.setContentsMargins(0, 20, 0, 0)
         server_layout = QHBoxLayout()
-        server_layout.addWidget(ot_url_label)
+        self._ot_url = QLineEdit(self._connection_widget)
+        self._ot_url.textChanged.connect(self.write)
         server_layout.addWidget(self._ot_url)
+        self._connect_button = QPushButton(_("Connect"), self._connection_widget)
+        self._connect_button.clicked.connect(self._connect)
         server_layout.addWidget(self._connect_button)
         connection_layout.addLayout(server_layout)
 
-        self._connection_status = QLabel(self)
+        # text field
+        ot_url_label = QLabel(_("OT WebSocket URL:"), self)
+        server_layout.addWidget(ot_url_label)
+
+
+        self._connection_status = QLabel(self._connection_widget)
         self._connection_status.setWordWrap(True)
         self._connection_status.setTextFormat(Qt.TextFormat.RichText)
         self._connection_status.setTextInteractionFlags(
