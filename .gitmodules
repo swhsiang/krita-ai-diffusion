@@ -5,3 +5,6 @@
 [submodule "ot_plugin/pydantic"]
 	path = ot_plugin/pydantic
 	url = https://github.com/pydantic/pydantic.git
+[submodule "ot_plugin/numpy"]
+	path = ot_plugin/numpy
+	url = https://github.com/numpy/numpy.git
