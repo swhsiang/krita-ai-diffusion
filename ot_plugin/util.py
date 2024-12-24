@@ -15,8 +15,11 @@ import statistics
 import zipfile
 from typing import Any, Callable, Iterable, Optional, Sequence, TypeVar
 from PyQt5 import sip
-from PyQt5.QtCore import QObject, QStandardPaths
-
+from PyQt5.QtCore import QObject, QStandardPaths, QByteArray
+from PyQt5.QtGui import QImage
+from collections import OrderedDict
+import time
+# import numpy as np
 T = TypeVar("T")
 R = TypeVar("R")
 QOBJECT = TypeVar("QOBJECT", bound=QObject)
@@ -265,3 +268,139 @@ def acquire_elements(l: list[QOBJECT]) -> list[QOBJECT]:
         if obj is not None:
             sip.transferback(obj)
     return l
+
+
+class LRUCacheWithTTL:
+    def __init__(self, capacity: int, ttl: int):
+        self.cache = OrderedDict()
+        self.capacity = capacity
+        self.ttl = ttl
+        self.lock = asyncio.Lock()
+
+    def _is_expired(self, key):
+        return time.time() - self.cache[key][1] > self.ttl
+
+    async def get(self, key: Any) -> Any:
+        async with self.lock:
+            if key in self.cache:
+                if self._is_expired(key):
+                    del self.cache[key]
+                    return None
+                self.cache.move_to_end(key)
+                return self.cache[key][0]
+            return None
+
+    async def set(self, key: Any, value: Any):
+        async with self.lock:
+            if key in self.cache:
+                if self._is_expired(key):
+                    del self.cache[key]
+                else:
+                    self.cache.move_to_end(key)
+            elif len(self.cache) >= self.capacity:
+                self.cache.popitem(last=False)
+            self.cache[key] = (value, time.time())
+
+    async def get_contents_string(self) -> str:
+        """Get a thread-safe string representation of the cache contents."""
+        async with self.lock:
+            return str({k: v[0] for k, v in self.cache.items() if not self._is_expired(k)})
+
+    def __str__(self):
+        import warnings
+        warnings.warn("Using non-thread-safe __str__. For thread-safe access, use get_contents_string()")
+        return str({k: v[0] for k, v in self.cache.items() if not self._is_expired(k)})
+
+    async def keys(self) -> list:
+        """Get a list of non-expired keys in the cache in a thread-safe manner."""
+        async with self.lock:
+            return [k for k in self.cache.keys() if not self._is_expired(k)]
+
+    async def values(self) -> list:
+        """Get a list of values for non-expired entries in the cache in a thread-safe manner."""
+        async with self.lock:
+            return [v[0] for k, v in self.cache.items() if not self._is_expired(k)]
+
+    async def items(self) -> list:
+        """Get a list of (key, value) pairs for non-expired entries in the cache in a thread-safe manner."""
+        async with self.lock:
+            return [(k, v[0]) for k, v in self.cache.items() if not self._is_expired(k)]
+
+def qimage_to_numpy(image: QImage):
+    """Convert a QImage to a NumPy array."""
+    # width = image.width()
+    # height = image.height()
+    # ptr = image.bits()
+    # ptr.setsize(image.byteCount())
+    # arr = np.array(ptr).reshape(height, width, 4)  # Assuming ARGB32 format
+    # return arr
+    pass
+
+def compare_images_np(image1: QImage, image2: QImage):
+    """Compare two QImages and return the differences as a NumPy array."""
+    # arr1 = qimage_to_numpy(image1)
+    # arr2 = qimage_to_numpy(image2)
+    
+    # if arr1.shape != arr2.shape:
+    #     raise ValueError("Images must have the same dimensions to compare.")
+    
+    # # Compute the difference
+    # diff = np.abs(arr1 - arr2)
+    
+    # return diff
+    pass
+
+def qbytearray_to_numpy(byte_array: QByteArray, width: int, height: int, channels: int = 4):
+    """Convert a QByteArray to a NumPy array.
+    
+    Args:
+        byte_array (QByteArray): The input QByteArray containing raw pixel data.
+        width (int): The width of the image.
+        height (int): The height of the image.
+        channels (int): The number of color channels (default is 4 for ARGB32 format).
+        
+    Returns:
+        np.ndarray: The resulting NumPy array.
+    """
+    # # Convert QByteArray to bytes
+    # byte_data = byte_array.data()
+    
+    # # Create a NumPy array from the byte data
+    # np_array = np.frombuffer(byte_data, dtype=np.uint8)
+    
+    # # Reshape the array to the desired dimensions
+    # np_array = np_array.reshape((height, width, channels))
+    
+    # return np_array
+    pass
+
+def numpy_to_qbytearray(np_array) -> QByteArray:
+    """Convert a NumPy array to a QByteArray.
+    
+    Args:
+        np_array (np.ndarray): The input NumPy array.
+        
+    Returns:
+        QByteArray: The resulting QByteArray.
+    """
+    # # Ensure the NumPy array is in the correct format
+    # if np_array.dtype != np.uint8:
+    #     raise ValueError("NumPy array must have dtype of uint8")
+    
+    # # Convert the NumPy array to bytes
+    # byte_data = np_array.tobytes()
+    
+    # # Create a QByteArray from the byte data
+    # byte_array = QByteArray(byte_data)
+    
+    # return byte_array
+    pass
+
+def compare_qbytearray(byte_array1: QByteArray, byte_array2: QByteArray):
+    raise NotImplementedError
+    # arr1 = qbytearray_to_numpy(byte_array1)
+    # arr2 = qbytearray_to_numpy(byte_array2)
+    # if arr1.shape != arr2.shape:
+    #     raise ValueError("QByteArrays must have the same dimensions to compare.")
+    # return np.abs(arr1 - arr2)
+    pass

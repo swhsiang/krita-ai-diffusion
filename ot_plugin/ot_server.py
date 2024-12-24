@@ -1,6 +1,7 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from typing import Dict
 import asyncio
+import json
 import logging as logger
 from ot_plugin.ot_client import (
     OperationType, MessageType, PixelData, LayerData, Operation, WebSocketMessage
@@ -26,10 +27,10 @@ class ConnectionManager:
             del self.active_connections[client_id]
 
     async def send_personal_message(self, message: WebSocketMessage, websocket: WebSocket):
-        await websocket.send_json(message.model_dump_json())
+        await websocket.send_json(message.to_json())
 
     async def broadcast(self, message: WebSocketMessage):
-        message_json = message.model_dump_json()
+        message_json = message.to_json()
         for client_id, connection in self.active_connections.items():
             if client_id == message.client_id:
                 continue
@@ -80,7 +81,9 @@ async def handle_operation(client_id: str, operation: Operation):
         version=server_version,
         timestamp=operation.timestamp
     )
-    await manager.broadcast(message)
+    logger.info(f"Broadcasting message: {message.to_json()}")
+    # FIXME broadcast later, print the message first.
+    # await manager.broadcast(message)
 
     # Acknowledge the client
     ack_message = WebSocketMessage(
@@ -116,4 +119,4 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
 if __name__ == "__main__":
     # Setup the logger
     logger.basicConfig(level=logger.INFO)
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8080)

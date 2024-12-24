@@ -1,15 +1,16 @@
 from __future__ import annotations
 import asyncio
+import json
 from .websockets.src.websockets import client as websockets_client
 from .websockets.src.websockets import exceptions as websockets_exceptions
 from typing import Any, AsyncGenerator, Dict, List, Literal, Union, Optional
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from uuid import uuid4
 from enum import Enum
 
 from .util import ot_client_logger
 from .client import Client, ClientMessage, ClientEvent, ClientFeatures, DeviceInfo
-from .api import WorkflowInput
+from .api import WorkflowInput, WorkflowKind, ImageInput, CheckpointInput, SamplingInput, ConditioningInput, InpaintParams, Extent
 from .settings import PerformanceSettings
 
 class OperationType(str, Enum):
@@ -42,19 +43,36 @@ class LayerData:
 
 class Operation:
     """Represents a document operation with Lamport timestamp tracking"""
-    client_id: str
-    sequence_num: int
-    timestamp: int
-    operation_type: OperationType
-    position: Dict[str, int]
-    data: Union[PixelData, LayerData]
-    base_version: int
-    version: Optional[int] = None
+    def __init__(self, client_id: str, sequence_num: int, timestamp: int, 
+                 operation_type: OperationType, position: Dict[str, int], 
+                 data: Union[PixelData, LayerData], base_version: int, 
+                 version: Optional[int] = None):
+        self.client_id = client_id
+        self.sequence_num = sequence_num
+        self.timestamp = timestamp
+        self.operation_type = operation_type
+        self.position = position
+        self.data = data
+        self.base_version = base_version
+        self.version = version
 
     @property
     def operation_id(self) -> str:
         """Unique identifier combining client ID, sequence number, and timestamp"""
         return f"{self.client_id}:{self.sequence_num}:{self.timestamp}"
+    
+    def to_json(self):
+        return json.dumps(asdict(self))
+    
+    @staticmethod
+    def from_json(json_str: str):
+        data = json.loads(json_str)
+        if data.get("data"):
+            if data.get("data").get("layer_type"):
+                data["data"] = LayerData(**data["data"])
+            else:
+                data["data"] = PixelData(**data["data"])
+        return Operation(**data)
 
 @dataclass
 class WebSocketMessage:
@@ -66,6 +84,16 @@ class WebSocketMessage:
     timestamp: Optional[int] = None
     error: Optional[str] = None
     version: Optional[int] = None
+
+    def to_json(message: WebSocketMessage):
+        return json.dumps(asdict(message))
+    
+    @staticmethod
+    def from_json(json_str: str):
+        data = json.loads(json_str)
+        if data.get("operation"):
+            data["operation"] = Operation.from_json(data["operation"])
+        return WebSocketMessage(**data)
 
 class OTClient(Client):
     """WebSocket client for handling Krita document synchronization with OT support"""
@@ -108,7 +136,7 @@ class OTClient(Client):
             ot_client_logger.error(f"Connection failed: {e}")
             return False
 
-    async def enqueue(self, work: WorkflowInput, front: bool = False) -> str:
+    async def enqueue(self, work: dict, front: bool = False) -> str:
         """
         Queues an update to be sent to the server with Lamport timestamp tracking
         Used when: Local document changes need to be synchronized
@@ -141,7 +169,7 @@ class OTClient(Client):
         # Queue the operation
         if front:
             # Create a new queue with this operation at the front
-            new_queue = asyncio.Queue()
+            new_queue: asyncio.Queue[tuple[str, Operation]] = asyncio.Queue()
             await new_queue.put((operation.operation_id, operation))
             while not self._queue.empty():
                 item = await self._queue.get()
@@ -224,14 +252,14 @@ class OTClient(Client):
                         client_version=self._local_version,
                         timestamp=self.lamport_timestamp
                     )
-                    ot_client_logger.debug(f"Sending message: {message}")
+                    ot_client_logger.info(f"Sending message: {message}")
                     await self._ws.send(message.model_dump_json())
 
                 # Receive server messages
                 message = await self._ws.recv()
-                data = WebSocketMessage.model_validate_json(message)
-                ot_client_logger.debug(f"Received message: {data}")
-                message_type = data.type
+                data = WebSocketMessage.from_json(message)
+                ot_client_logger.info(f"Received message: {data}")
+                message_type = data.get("type")
 
                 if message_type == MessageType.UPDATE:
                     await self._handle_server_update(data.operation)
@@ -259,7 +287,7 @@ class OTClient(Client):
                     )
                 else:
                     # Handle unknown message type
-                    logger.error(f"Unknown message type: {message_type}, message: {message}")
+                    ot_client_logger.error(f"Unknown message type: {message_type}, message: {message}")
                     yield ClientMessage(
                         ClientEvent.error,
                         error=f"Unknown message type: {message_type}, message: {message}"
@@ -314,8 +342,9 @@ class OTClient(Client):
 # Example usage:
 async def main():
     # Connect two clients to demonstrate collaboration
-    client1 = await OTClient.connect("ws://localhost:8000")
-    client2 = await OTClient.connect("ws://localhost:8000")
+    ws_url = "ws://localhost:8000"
+    client1 = await OTClient.connect(ws_url)
+    # client2 = await OTClient.connect(ws_url)
     
     # Listen for updates on client1
     async def listen_client1():
@@ -333,26 +362,33 @@ async def main():
                 print(f"Client 1 error: {message.error}")
 
     # Listen for updates on client2
-    async def listen_client2():
-        async for message in client2.listen():
-            if message.event == ClientEvent.output:
-                operation = message.result
-                print(f"Client 2 received operation: {operation['operation_type']}")
-            elif message.event == ClientEvent.error:
-                print(f"Client 2 error: {message.error}")
+    # async def listen_client2():
+    #     async for message in client2.listen():
+    #         if message.event == ClientEvent.output:
+    #             operation = message.result
+    #             print(f"Client 2 received operation: {operation['operation_type']}")
+    #         elif message.event == ClientEvent.error:
+    #             print(f"Client 2 error: {message.error}")
 
     # Simulate drawing operations
     async def simulate_drawing():
-        # Client 1 creates a new layer
-        await client1.enqueue({
-            "operation_type": OperationType.LAYER_CREATE,
-            "position": {"x": 0, "y": 0},
-            "data": LayerData(
-                layer_id="layer1",
-                layer_name="Drawing Layer",
-                layer_type="paintlayer"
-            )
-        })
+        # Create a WorkflowInput object
+        workflow_input = WorkflowInput(
+            kind=WorkflowKind.generate,
+            images=ImageInput.from_extent(Extent(1024, 1024)),
+            models=CheckpointInput(checkpoint="model_checkpoint"),
+            sampling=SamplingInput(sampler="sampler_name", scheduler="scheduler_name", cfg_scale=7.5, total_steps=50),
+            conditioning=ConditioningInput(positive="positive_prompt"),
+            inpaint=InpaintParams(mode=InpaintMode.automatic, target_bounds=Bounds(0, 0, 1024, 1024)),
+            crop_upscale_extent=Extent(1024, 1024),
+            upscale_model="upscale_model_name",
+            control_mode=ControlMode.reference,
+            batch_count=1,
+            nsfw_filter=0.0,
+            custom_workflow=None
+        )
+
+        await client1.enqueue(workflow_input)
 
         # Wait for layer creation to be processed
         await asyncio.sleep(1)
@@ -369,15 +405,15 @@ async def main():
         })
 
         # Client 2 draws a blue pixel concurrently
-        await client2.enqueue({
-            "operation_type": OperationType.PIXEL_UPDATE,
-            "position": {"x": 150, "y": 150},
-            "data": PixelData(
-                color=[0, 0, 255, 255],  # Blue pixel
-                bounds={"x": 150, "y": 150, "width": 1, "height": 1},
-                layer_id="layer1"
-            )
-        })
+        # await client2.enqueue({
+        #     "operation_type": OperationType.PIXEL_UPDATE,
+        #     "position": {"x": 150, "y": 150},
+        #     "data": PixelData(
+        #         color=[0, 0, 255, 255],  # Blue pixel
+        #         bounds={"x": 150, "y": 150, "width": 1, "height": 1},
+        #         layer_id="layer1"
+        #     )
+        # })
 
         # Client 1 renames the layer
         await client1.enqueue({
@@ -393,13 +429,13 @@ async def main():
     # Run everything concurrently
     await asyncio.gather(
         listen_client1(),
-        listen_client2(),
-        simulate_drawing()
+        # listen_client2(),
+        # simulate_drawing()
     )
 
     # Cleanup
     await client1.disconnect()
-    await client2.disconnect()
+    # await client2.disconnect()
 
 if __name__ == "__main__":
     # Expected server messages:

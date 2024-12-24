@@ -6,20 +6,23 @@ import krita
 from krita import Krita
 from PyQt5.QtCore import QObject, QUuid, QByteArray, QTimer, pyqtSignal
 from PyQt5.QtGui import QImage
-
+from typing import Optional
 from .image import Extent, Bounds, Mask, Image
 from .layer import Layer, LayerManager, LayerType
 from .pose import Pose
 from .localization import translate as _
-from .util import acquire_elements
-
+from .util import acquire_elements, ot_client_logger 
+from .eventloop import run as asyncio_run
+import time
+from .util import LRUCacheWithTTL, compare_qbytearray
+from functools import partial
 
 class Document(QObject):
     """Document interface. Used as placeholder when there is no open Document in Krita."""
 
     selection_bounds_changed = pyqtSignal()
     current_time_changed = pyqtSignal()
-
+    pixel_level_changed = pyqtSignal()
     _layers: LayerManager
 
     def __init__(self):
@@ -106,6 +109,7 @@ class KritaDocument(Document):
     _selection_bounds: Bounds | None = None
     _current_time: int = 0
     _instances: WeakValueDictionary[str, KritaDocument] = WeakValueDictionary()
+    _virtual_doc_timer: QTimer
 
     def __init__(self, krita_document: krita.Document):
         super().__init__()
@@ -117,6 +121,60 @@ class KritaDocument(Document):
         self._poller.start()
         self._instances[self._id.toString()] = self
         self._layers = LayerManager(krita_document)
+
+        self._previous_image: Optional[QByteArray] = None
+        self._diff_cache: LRUCacheWithTTL[str, dict[int, int]] = LRUCacheWithTTL(capacity=50, ttl=0.05)
+
+        # NOTE periodically update current document with value from virtual document state
+        self._virtual_doc_state: LRUCacheWithTTL[int, int] = LRUCacheWithTTL(capacity=self._doc.width() * self._doc.height(), ttl=0.05)
+        self._virtual_doc_timer = QTimer()
+        self._virtual_doc_timer.setInterval(1000)
+        self._virtual_doc_timer.timeout.connect(self._schedule_virtual_doc_update)
+        self._virtual_doc_timer.start()
+
+    def _schedule_virtual_doc_update(self):
+        # NOTE scan the doc every 1000ms.
+        if self.is_valid:
+            should_check = False 
+            selection = self._doc.selection()
+            selection_bounds = _selection_bounds(selection) if selection else None
+            if selection_bounds:
+                should_check = True
+            current_time = self.current_time
+            if current_time != self._current_time:
+                should_check = True
+            asyncio_run(partial(self._async_check_pixel_and_update_pixel, should_check)())
+        else:
+            self._virtual_doc_timer.stop()
+
+    async def _async_check_pixel_and_update_pixel(self, should_check: bool):
+        if should_check:
+            await self._check_pixel_level_changes(_selection_bounds(self._doc.selection()))
+        # TODO: uncomment this when we have a way to update the virtual document
+        await self._virtual_doc_update()
+
+    async def _virtual_doc_update(self):
+        """Persist _virtual_doc_state by updating the entire document's pixels."""
+        keys = list(await self._virtual_doc_state.keys())  # Convert keys to a list first
+        for x, y in keys:
+            bounds = Bounds(x, y, 1, 1)
+            self._doc.setPixelData(self._virtual_doc_state.get((x, y)), *bounds)
+        self._doc.refreshProjection()
+
+    # def mousePressEvent(self, event: QMouseEvent):
+    #     self._handle_local_change(event)
+
+    # def mouseMoveEvent(self, event: QMouseEvent):
+    #     self._handle_local_change(event)
+
+    # def mouseReleaseEvent(self, event: QMouseEvent):
+    #     self._handle_local_change(event)
+
+    # def _handle_local_change(self, event: QMouseEvent):
+    #     x, y = event.pos().x(), event.pos().y()
+    #     pixel = self._doc.pixel(x, y)
+    #     self._in_memory_array[(x, y)] = pixel
+    #     self._virtual_doc_state[(x, y)] = pixel
 
     @classmethod
     def active(cls):
@@ -254,11 +312,11 @@ class KritaDocument(Document):
             if selection_bounds != self._selection_bounds:
                 self._selection_bounds = selection_bounds
                 self.selection_bounds_changed.emit()
-
+            
             current_time = self.current_time
             if current_time != self._current_time:
                 self._current_time = current_time
-                self.current_time_changed.emit()
+                self.current_time_changed.emit() 
         else:
             self._poller.stop()
 
@@ -269,6 +327,72 @@ class KritaDocument(Document):
             return self._id == other._id
         return False
 
+    async def _check_pixel_level_changes(self, bounds: Optional[Bounds] = None):
+        """
+        Check pixel level changes for document pixels within the given bounds.
+        If no bounds are given, it will calculate the region of interest (i.e. the area that changes).
+        """
+        try:
+            _bounds = bounds or self._get_region_of_interest()
+            ot_client_logger.info(f"Checking pixel level changes for bounds: {_bounds}")
+            current_image: QByteArray = self._doc.pixelData(
+                _bounds.x, _bounds.y, _bounds.width, _bounds.height
+            )
+            ot_client_logger.info(f"Current image size: {current_image.size() if current_image else 'None'}, bounds: {_bounds}, doc size: {self._doc.width()}x{self._doc.height()}")
+            current_time = time.time()
+            if hasattr(self, "_previous_image") and self._previous_image:
+                # FIXME compare_qbytearray is not implemented
+                diff = compare_qbytearray(self._previous_image, current_image)
+                if diff.any():
+                    diff_dict = {index: value for index, value in enumerate(diff)}
+                    ot_client_logger.info(f"Pixel level changes detected {time.time()}, {diff_dict}")
+                    self._previous_image = current_image
+                    await self._diff_cache.set(str(time.time()), diff_dict)
+                    self.pixel_level_changed.emit()
+                else:
+                    ot_client_logger.info(f"No pixel level changes {time.time()}")
+            else:
+                self._previous_image = current_image
+            ot_client_logger.info(f"time diff: {time.time() - current_time}")
+        except Exception as e:
+            ot_client_logger.error(f"Error getting pixel data: {e}")
+            return
+
+    @staticmethod
+    async def pixel_equal(data1: QByteArray, data2: QByteArray) -> bool:
+        """Compute the difference between two QByteArray objects representing pixel data."""
+        
+        if data1.size() != data2.size():
+            raise ValueError("QByteArray objects must be of the same size to compute the difference.")
+
+        for i in range(data1.size()):
+            if data1[i] != data2[i]:
+                return False
+        return True
+
+    @staticmethod
+    async def compute_pixel_difference(original_data: QByteArray, incoming_data: QByteArray) -> dict[int, int]:
+        """Compute the difference between two QByteArray objects representing pixel data."""
+        if original_data.size() != incoming_data.size():
+            raise ValueError("QByteArray objects must be of the same size to compute the difference.")
+
+        difference_dict = {}
+
+        for i in range(original_data.size()):
+            if original_data[i] != incoming_data[i]:
+                difference_dict[i] = incoming_data[i]
+
+        return difference_dict 
+
+    def _get_region_of_interest(self) -> Bounds:
+        selection = self._doc.selection()
+        if selection:
+            ot_client_logger.info(f"Selection bounds: {_selection_bounds(selection)}")
+            pass
+            # return _selection_bounds(selection)
+        # If no selection, fall back to the entire document
+        return Bounds(0, 0, self._doc.width(), self._doc.height())
+    
 
 def _selection_bounds(selection: krita.Selection):
     return Bounds(selection.x(), selection.y(), selection.width(), selection.height())
